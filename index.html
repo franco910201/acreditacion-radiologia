@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Acreditación Radiología</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        header: ['Oswald', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',    // Slate 900
+                            card: '#1e293b',    // Slate 800
+                            accent: '#06b6d4',  // Cyan 500
+                            light: '#e2e8f0',   // Slate 200
+                            ai: '#8b5cf6'       // Violet 500 for AI features
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #06b6d4;
+            color: #06b6d4;
+            background-color: rgba(6, 182, 212, 0.05);
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: conic-gradient(#06b6d4 var(--percent), #334155 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .progress-ring::before {
+            content: attr(data-value);
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: #1e293b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .ai-gradient-text {
+            background: linear-gradient(to right, #c084fc, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .ai-border {
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.1);
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #8b5cf6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            background: #1e293b;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div id="message-box" class="message-box text-sm"></div>
+
+    <!-- HEADER -->
+    <header class="bg-brand-card border-b border-slate-700 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded bg-brand-accent/10 flex items-center justify-center text-brand-accent">
+                    <i class="fa-solid fa-atom text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-header text-xl uppercase tracking-wide text-white">Acreditación Alta Calidad</h1>
+                    <p class="text-xs text-slate-400">Especialización en Radiología e Imágenes Diagnósticas</p>
+                </div>
+            </div>
+            <div class="hidden md:block text-xs text-right text-slate-500">
+                Universidad LLS<br>Plan Maestro 2025-2026
+            </div>
+        </div>
+
+        <!-- TABS NAVIGATION -->
+        <nav class="max-w-7xl mx-auto px-4 flex gap-1 mt-2 overflow-x-auto">
+            <button onclick="switchTab(1)" id="btn-tab-1" class="tab-btn active px-6 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors flex-shrink-0">
+                1. PREPARACIÓN
+            </button>
+            <button onclick="switchTab(2)" id="btn-tab-2" class="tab-btn px-6 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors flex-shrink-0">
+                2. AUTOEVALUACIÓN (12 FACTORES)
+            </button>
+            <button onclick="switchTab(3)" id="btn-tab-3" class="tab-btn px-6 py-3 text-sm font-semibold text-slate-400 hover:text-white transition-colors flex-shrink-0">
+                3. VISITA PARES
+            </button>
+        </nav>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-6">
+
+        <!-- TAB 1: PREPARACIÓN -->
+        <div id="tab-1" class="tab-content active">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left: Intro -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-brand-card p-6 rounded-xl border border-slate-700">
+                        <h2 class="font-header text-2xl text-white mb-4 border-l-4 border-brand-accent pl-3">Justificación y Objetivos</h2>
+                        <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                            El programa inicia este proceso debido a su nivel de consolidación académica. No es solo un trámite, es un ejercicio de <strong class="text-brand-accent">autorregulación y cultura de calidad</strong>.
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-bullseye text-brand-accent mb-2"></i>
+                                <h3 class="font-bold text-white text-sm">Objetivo Central</h3>
+                                <p class="text-xs text-slate-400">Cumplimiento verificable de factores CNA mediante gestión académica y logística.</p>
+                            </div>
+                            <div class="bg-slate-900/50 p-4 rounded-lg">
+                                <i class="fa-solid fa-chart-line text-green-400 mb-2"></i>
+                                <h3 class="font-bold text-white text-sm">Meta</h3>
+                                <p class="text-xs text-slate-400">Consolidar una cultura de mejora continua basada en evidencia.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Horizontal -->
+                    <div class="bg-brand-card p-6 rounded-xl border border-slate-700 overflow-x-auto">
+                        <h3 class="font-bold text-white mb-4">Hoja de Ruta (12-18 Meses)</h3>
+                        <div class="flex min-w-[600px] justify-between relative py-4">
+                            <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-700 -z-0"></div>
+                            
+                            <div class="relative z-10 bg-brand-card px-2 text-center">
+                                <div class="w-10 h-10 mx-auto bg-slate-800 border-2 border-brand-accent rounded-full flex items-center justify-center mb-2 font-bold text-brand-accent">1</div>
+                                <div class="text-xs font-bold text-white">Comité</div>
+                                <div class="text-[10px] text-slate-400">Mes 1</div>
+                            </div>
+                            <div class="relative z-10 bg-brand-card px-2 text-center">
+                                <div class="w-10 h-10 mx-auto bg-slate-800 border-2 border-brand-accent rounded-full flex items-center justify-center mb-2 font-bold text-brand-accent">2</div>
+                                <div class="text-xs font-bold text-white">Evidencias</div>
+                                <div class="text-[10px] text-slate-400">Mes 1-2</div>
+                            </div>
+                            <div class="relative z-10 bg-brand-card px-2 text-center">
+                                <div class="w-10 h-10 mx-auto bg-slate-800 border-2 border-brand-accent rounded-full flex items-center justify-center mb-2 font-bold text-brand-accent">3</div>
+                                <div class="text-xs font-bold text-white">Riesgos</div>
+                                <div class="text-[10px] text-slate-400">Mes 3</div>
+                            </div>
+                            <div class="relative z-10 bg-brand-card px-2 text-center">
+                                <div class="w-10 h-10 mx-auto bg-slate-800 border-2 border-brand-accent rounded-full flex items-center justify-center mb-2 font-bold text-brand-accent">4</div>
+                                <div class="text-xs font-bold text-white">Repositorio</div>
+                                <div class="text-[10px] text-slate-400">Mes 3</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Governance -->
+                <div class="bg-brand-card p-6 rounded-xl border border-slate-700 h-fit">
+                    <h3 class="font-header text-xl text-white mb-4">Estructura de Gobernanza</h3>
+                    <ul class="space-y-4">
+                        <li class="flex gap-3">
+                            <div class="w-8 h-8 rounded bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0"><i class="fa-solid fa-user-tie"></i></div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Dirección</h4>
+                                <p class="text-xs text-slate-400">Liderazgo estratégico y vocería.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-3">
+                            <div class="w-8 h-8 rounded bg-purple-500/10 flex items-center justify-center text-purple-400 flex-shrink-0"><i class="fa-solid fa-clipboard-check"></i></div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Coord. Calidad</h4>
+                                <p class="text-xs text-slate-400">Control metodológico y documental.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-3">
+                            <div class="w-8 h-8 rounded bg-green-500/10 flex items-center justify-center text-green-400 flex-shrink-0"><i class="fa-solid fa-users"></i></div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Comunidad</h4>
+                                <p class="text-xs text-slate-400">Representantes docentes y estudiantes.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer Navigation -->
+            <div class="mt-8 flex justify-end">
+                <button onclick="switchTab(2)" class="px-6 py-2 bg-brand-accent hover:bg-cyan-600 text-slate-900 font-bold rounded transition-colors flex items-center gap-2">
+                    Ir a Autoevaluación <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 2: AUTOEVALUACIÓN -->
+        <div id="tab-2" class="tab-content">
+            
+            <div class="mb-6 bg-brand-accent/10 border border-brand-accent/20 p-4 rounded-lg flex items-start gap-3">
+                <i class="fa-solid fa-circle-info text-brand-accent mt-1"></i>
+                <div>
+                    <h4 class="text-sm font-bold text-brand-accent">Metodología Rigurosa</h4>
+                    <p class="text-xs text-slate-300">Cada factor fue evaluado mediante triangulación de datos: Grupos Focales + Encuestas de Percepción + Análisis de Indicadores del Sistema Interno (SIAC).</p>
+                </div>
+            </div>
+
+            <!-- Grid de Factores (COMPLETO F1-F12) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+                
+                <!-- Factor 1 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 5%" data-value="5%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F1. Identidad<br>(PEP)</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 2 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 9%" data-value="9%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F2. Estudiantes</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 3 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 8%" data-value="8%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F3. Profesores</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 4 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 6%" data-value="6%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F4. Egresados</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 5 (Destacado) -->
+                <div class="bg-brand-card p-4 rounded-xl border-2 border-brand-accent shadow-[0_0_15px_rgba(6,182,212,0.1)] flex flex-col items-center text-center relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-6 h-6 bg-brand-accent text-slate-900 flex items-center justify-center text-[8px] rounded-bl-lg"><i class="fa-solid fa-star"></i></div>
+                    <div class="progress-ring mb-3" style="--percent: 12%" data-value="12%"></div>
+                    <h4 class="text-[10px] font-bold text-white uppercase leading-tight">F5. Académico</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 6 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 8%" data-value="8%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F6. Permanencia</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 7 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 10%" data-value="10%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F7. Interacción</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 8 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 8%" data-value="8%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F8. Investigación</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 9 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 6%" data-value="6%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F9. Bienestar</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 10 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 10%" data-value="10%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F10. Recursos</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 11 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 9%" data-value="9%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F11. Organización</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+                <!-- Factor 12 -->
+                <div class="bg-brand-card p-4 rounded-xl border border-slate-700 hover:border-brand-accent transition-colors flex flex-col items-center text-center">
+                    <div class="progress-ring mb-3" style="--percent: 9%" data-value="9%"></div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase leading-tight">F12. Calidad</h4>
+                    <span class="mt-2 text-[10px] px-2 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/20">ALTO</span>
+                </div>
+
+            </div>
+
+             <!-- AI FEATURE: PLAN DE MEJORA (SIMULADO) -->
+             <div class="mt-8 bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-xl ai-border relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 text-brand-ai text-6xl">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <h3 class="font-header text-xl text-white mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-robot text-brand-ai"></i> <span class="ai-gradient-text font-bold">Generador de Planes de Mejora (IA)</span>
+                </h3>
+                <p class="text-sm text-slate-400 mb-4 max-w-2xl">Describe una debilidad detectada en un factor y la IA generará una estrategia de mejora alineada con el CNA.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-3">
+                        <select id="ai-factor-select" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:border-brand-ai focus:outline-none">
+                            <option value="Factor 1: Identidad (PEP)">Factor 1: Identidad (PEP)</option>
+                            <option value="Factor 2: Estudiantes">Factor 2: Estudiantes</option>
+                            <option value="Factor 3: Profesores">Factor 3: Profesores</option>
+                            <option value="Factor 4: Egresados">Factor 4: Egresados</option>
+                            <option value="Factor 5: Académico">Factor 5: Académico</option>
+                            <option value="Factor 6: Permanencia">Factor 6: Permanencia</option>
+                            <option value="Factor 7: Interacción">Factor 7: Interacción</option>
+                            <option value="Factor 8: Investigación">Factor 8: Investigación</option>
+                            <option value="Factor 9: Bienestar">Factor 9: Bienestar</option>
+                            <option value="Factor 10: Recursos">Factor 10: Recursos</option>
+                            <option value="Factor 11: Organización">Factor 11: Organización</option>
+                            <option value="Factor 12: Calidad">Factor 12: Calidad</option>
+                        </select>
+                        <textarea id="ai-weakness-input" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:border-brand-ai focus:outline-none" placeholder="Describe el hallazgo crítico aquí..."></textarea>
+                        <button onclick="generateImprovementPlan()" class="px-4 py-2 bg-brand-ai hover:bg-violet-600 text-white rounded text-sm font-bold transition-colors flex items-center gap-2">
+                            <span id="ai-btn-text-1">Generar Estrategia</span>
+                            <div id="ai-loader-1" class="loader hidden"></div>
+                        </button>
+                    </div>
+                    <div class="bg-slate-900/80 rounded p-4 border border-slate-700 min-h-[120px]">
+                        <h4 class="text-xs font-bold text-brand-ai uppercase mb-2">Estrategia Sugerida:</h4>
+                        <div id="ai-output-1" class="text-xs text-slate-300 leading-relaxed italic">
+                            El resultado aparecerá aquí...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Navigation -->
+            <div class="mt-8 flex justify-between">
+                <button onclick="switchTab(1)" class="text-slate-500 hover:text-white transition-colors text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> Anterior
+                </button>
+                <button onclick="switchTab(3)" class="px-6 py-2 bg-brand-accent hover:bg-cyan-600 text-slate-900 font-bold rounded transition-colors flex items-center gap-2">
+                    Ir a Visita Pares <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 3: VISITA EXTERNA -->
+        <div id="tab-3" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- Agenda -->
+                <div class="bg-brand-card rounded-xl border border-slate-700 overflow-hidden h-fit">
+                    <div class="bg-slate-900 p-4 border-b border-slate-700 flex justify-between items-center">
+                        <h3 class="font-bold text-white"><i class="fa-regular fa-calendar-check text-yellow-500 mr-2"></i>Agenda de Visita</h3>
+                        <span class="text-[10px] bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded">Simulación</span>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div class="flex gap-4">
+                            <div class="font-mono text-yellow-500 font-bold w-12 text-right">08:00</div>
+                            <div class="text-sm border-l border-slate-700 pl-4">
+                                <span class="block text-white font-semibold">Bienvenida Institucional</span>
+                                <span class="text-slate-400 text-xs">Presentación Misión y Visión.</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="font-mono text-yellow-500 font-bold w-12 text-right">10:00</div>
+                            <div class="text-sm border-l border-slate-700 pl-4">
+                                <span class="block text-white font-semibold">Recorrido de Infraestructura</span>
+                                <span class="text-slate-400 text-xs">Hospital y Centro de Simulación.</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="font-mono text-yellow-500 font-bold w-12 text-right">11:00</div>
+                            <div class="text-sm border-l border-slate-700 pl-4">
+                                <span class="block text-white font-semibold">Reunión Estudiantes</span>
+                                <span class="text-slate-400 text-xs">Evaluación de percepción.</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="font-mono text-yellow-500 font-bold w-12 text-right">14:30</div>
+                            <div class="text-sm border-l border-slate-700 pl-4">
+                                <span class="block text-white font-semibold">Revisión Documental</span>
+                                <span class="text-slate-400 text-xs">Cotejo de evidencias F1-F12.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI FEATURE: SIMULADOR PARES (SIMULADO) -->
+                <div class="bg-slate-900 rounded-xl ai-border p-6 relative">
+                    <div class="absolute top-0 right-0 px-3 py-1 bg-brand-ai text-white text-[10px] font-bold rounded-bl-lg rounded-tr-xl">BETA IA</div>
+                    <h3 class="font-header text-xl text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-user-graduate text-brand-ai"></i> <span class="ai-gradient-text font-bold">Simulador de Entrevista CNA</span>
+                    </h3>
+                    <p class="text-sm text-slate-400 mb-4">Entrena tus respuestas. La IA asumirá el rol de un Par Académico estricto y evaluará tu respuesta.</p>
+
+                    <div class="space-y-4">
+                        <!-- Step 1: Generate Question -->
+                        <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                            <label class="text-xs text-brand-ai font-bold uppercase mb-1 block">1. Selecciona tu Rol:</label>
+                            <div class="flex gap-2">
+                                <select id="ai-role-select" class="flex-grow bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:border-brand-ai focus:outline-none">
+                                    <option value="Director de Programa">Director de Programa / Organización</option>
+                                    <option value="Docente">Docente</option>
+                                    <option value="Residente (Estudiante)">Residente (Estudiante)</option>
+                                    <option value="Egresado">Egresado</option>
+                                </select>
+                                <button onclick="generatePeerQuestion()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-bold transition-colors">
+                                    <i class="fa-solid fa-dice"></i> Nueva Pregunta
+                                </button>
+                            </div>
+                            <div id="ai-question-box" class="mt-3 text-sm text-white font-serif italic border-l-2 border-brand-ai pl-3 py-1 hidden">
+                                
+                            </div>
+                            <div id="ai-loader-2" class="loader mt-2 hidden"></div>
+                        </div>
+
+                        <!-- Step 2: Answer -->
+                        <div id="ai-answer-section" class="hidden opacity-0 transition-opacity duration-500">
+                            <label class="text-xs text-brand-ai font-bold uppercase mb-1 block">2. Tu Respuesta:</label>
+                            <textarea id="ai-user-answer" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:border-brand-ai focus:outline-none" placeholder="Escribe tu argumento aquí..."></textarea>
+                            <button onclick="evaluateAnswer()" class="mt-2 w-full py-2 bg-brand-ai hover:bg-violet-600 text-white rounded text-sm font-bold transition-colors">
+                                Evaluar mi Respuesta
+                            </button>
+                        </div>
+
+                        <!-- Step 3: Feedback -->
+                        <div id="ai-feedback-box" class="hidden bg-green-900/20 border border-green-500/30 rounded p-3 mt-2">
+                            <h4 class="text-xs font-bold text-green-400 uppercase mb-1"><i class="fa-solid fa-check-circle"></i> Retroalimentación del Par:</h4>
+                            <p id="ai-feedback-text" class="text-xs text-slate-300"></p>
+                            <div id="ai-loader-3" class="loader mt-2 hidden"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Navigation -->
+            <div class="mt-8 flex justify-start">
+                <button onclick="switchTab(2)" class="text-slate-500 hover:text-white transition-colors text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> Anterior
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-brand-card border-t border-slate-800 py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            &copy; 2025 Universidad LLS - Especialización en Radiología. Documento interno de gestión de calidad.
+        </div>
+    </footer>
+
+    <script>
+        const apiKey = ""; // API Key removed for simulation
+
+        function showMessage(text) {
+            const box = document.getElementById('message-box');
+            box.innerText = text;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 3000);
+        }
+
+        function switchTab(tabIndex) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'border-b-2', 'border-cyan-500', 'text-cyan-500');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById(`btn-tab-${tabIndex}`);
+            activeBtn.classList.add('active');
+            activeBtn.classList.remove('text-slate-400');
+
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`tab-${tabIndex}`).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- SIMULATED AI RESPONSES ---
+        // Base de datos de respuestas simuladas para mantener la privacidad y estabilidad
+        
+        function simulateAIResponse(prompt) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const lowerPrompt = prompt.toLowerCase();
+                    
+                    // --- Generador de Planes de Mejora ---
+                    if (lowerPrompt.includes("estrategia de mejora") || lowerPrompt.includes("plan de mejora")) {
+                        if (lowerPrompt.includes("investigación")) {
+                            resolve("ACCION: Crear semilleros de investigación clínica desde 1er año.\nRESPONSABLE: Coord. de Investigaciones.\nINDICADOR: % de residentes con artículo sometido antes de grado.");
+                        } else if (lowerPrompt.includes("estudiantes")) {
+                            resolve("ACCION: Implementar mentoría de pares (R Mayor a R Menor).\nRESPONSABLE: Bienestar Universitario.\nINDICADOR: Tasa de satisfacción estudiantil > 4.5/5.");
+                        } else if (lowerPrompt.includes("recursos")) {
+                            resolve("ACCION: Gestionar licencias compartidas de bases de datos con el Hospital.\nRESPONSABLE: Dirección Administrativa.\nINDICADOR: # de accesos a bases de datos por residente/mes.");
+                        } else {
+                            resolve("ACCION: Establecer un cronograma de seguimiento mensual de indicadores.\nRESPONSABLE: Comité de Calidad.\nINDICADOR: % de cumplimiento de planes de acción.");
+                        }
+                    } 
+                    
+                    // --- Simulador de Preguntas (Tab 3) ---
+                    else if (lowerPrompt.includes("pregunta difícil")) {
+                        if (lowerPrompt.includes("director")) {
+                            resolve("¿Cómo garantizan la sostenibilidad financiera del programa frente a los cambios en el sistema de salud sin comprometer la calidad académica?");
+                        } else if (lowerPrompt.includes("docente")) {
+                            resolve("¿De qué manera concreta actualizan sus contenidos frente a la rápida obsolescencia tecnológica en radiología? Deme un ejemplo reciente.");
+                        } else if (lowerPrompt.includes("residente") || lowerPrompt.includes("estudiante")) {
+                            resolve("¿Sienten que sus opiniones en los comités curriculares realmente generan cambios, o es solo un formalismo de participación?");
+                        } else {
+                            resolve("¿Cómo evidencia el programa su impacto real en la salud pública de la región más allá de la atención asistencial?");
+                        }
+                    } 
+                    
+                    // --- Evaluación de Respuestas (Tab 3) ---
+                    else if (lowerPrompt.includes("evalúa")) {
+                        resolve("Respuesta sólida y bien articulada. El uso de evidencia concreta fortalece tu argumento. Sugerencia: menciona cifras específicas de impacto si es posible.");
+                    } 
+                    
+                    else {
+                        resolve("Entendido. Procesando solicitud con parámetros de calidad CNA.");
+                    }
+                }, 1500); // 1.5s delay for realism
+            });
+        }
+
+        async function callGemini(prompt) {
+            // Force Simulation Mode for Stability/Privacy
+            return simulateAIResponse(prompt);
+        }
+
+        // --- FEATURE 1: PLAN DE MEJORA ---
+        async function generateImprovementPlan() {
+            const factor = document.getElementById('ai-factor-select').value;
+            const weakness = document.getElementById('ai-weakness-input').value;
+            
+            if (!weakness) { showMessage("Por favor describe una debilidad."); return; }
+
+            const btnText = document.getElementById('ai-btn-text-1');
+            const loader = document.getElementById('ai-loader-1');
+            const output = document.getElementById('ai-output-1');
+
+            btnText.classList.add('hidden');
+            loader.classList.remove('hidden');
+            output.innerText = "Analizando estándares del CNA...";
+
+            const response = await callGemini(`Genera un plan de mejora para el factor ${factor} con la debilidad: ${weakness}`);
+            
+            output.innerText = response;
+            btnText.classList.remove('hidden');
+            loader.classList.add('hidden');
+        }
+
+        // --- FEATURE 2: SIMULADOR PARES ---
+        let currentQuestion = "";
+
+        async function generatePeerQuestion() {
+            const role = document.getElementById('ai-role-select').value;
+            const questionBox = document.getElementById('ai-question-box');
+            const answerSection = document.getElementById('ai-answer-section');
+            const loader = document.getElementById('ai-loader-2');
+            const feedbackBox = document.getElementById('ai-feedback-box');
+
+            questionBox.classList.add('hidden');
+            feedbackBox.classList.add('hidden');
+            answerSection.classList.add('hidden');
+            loader.classList.remove('hidden');
+
+            const response = await callGemini(`Genera una pregunta difícil para un ${role}`);
+            currentQuestion = response;
+
+            loader.classList.add('hidden');
+            questionBox.innerText = `"${response}"`;
+            questionBox.classList.remove('hidden');
+            
+            answerSection.classList.remove('hidden');
+            setTimeout(() => answerSection.classList.remove('opacity-0'), 100);
+        }
+
+        async function evaluateAnswer() {
+            const userAnswer = document.getElementById('ai-user-answer').value;
+            const feedbackBox = document.getElementById('ai-feedback-box');
+            const feedbackText = document.getElementById('ai-feedback-text');
+            const loader = document.getElementById('ai-loader-3');
+
+            if (!userAnswer) { showMessage("Por favor escribe una respuesta."); return; }
+
+            feedbackBox.classList.remove('hidden');
+            feedbackText.innerText = "";
+            loader.classList.remove('hidden');
+
+            const response = await callGemini(`Evalúa esta respuesta: ${userAnswer}`);
+
+            loader.classList.add('hidden');
+            feedbackText.innerText = response;
+        }
+
+    </script>
+</body>
+</html>
